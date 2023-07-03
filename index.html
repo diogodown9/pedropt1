@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scanner de Matrículas</title>
+</head>
+<body>
+<h1>Scanner de Matrículas</h1>
+
+<button onclick="capturarFoto()">Capturar Foto</button>
+
+<div id="fotoContainer"></div>
+<div id="respostaContainer"></div>
+
+<script>
+    function capturarFoto() {
+        // Acessa a câmera do dispositivo
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                // Exibe a imagem capturada em uma tag <img>
+                var fotoContainer = document.getElementById('fotoContainer');
+                var fotoTag = document.createElement('img');
+                fotoTag.srcObject = stream;
+                fotoTag.autoplay = true;
+                fotoContainer.appendChild(fotoTag);
+
+                // Tira uma foto assim que o usuário clicar
+                fotoTag.addEventListener('click', function() {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = fotoTag.videoWidth;
+                    canvas.height = fotoTag.videoHeight;
+                    canvas.getContext('2d').drawImage(fotoTag, 0, 0);
+
+                    // Converte a imagem para um formato adequado para envio
+                    var fotoDataUrl = canvas.toDataURL('image/jpeg');
+
+                    // Envia a imagem para a API
+                    enviarFoto(fotoDataUrl);
+
+                    // Para a exibição do vídeo
+                    fotoTag.srcObject = null;
+                    stream.getTracks()[0].stop();
+                });
+            })
+            .catch(function(error) {
+                console.error('Erro ao acessar a câmera:', error);
+                console.log('Erro ao acessar a câmera:', error);
+            });
+    }
+
+    function enviarFoto(fotoDataUrl) {
+        var myHeaders = new Headers();
+        myHeaders.append("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiY2xpZW50IiwiaWF0IjoxNjg4MzEwNjI3fQ.48Ww3KDgB0NyiHvuzU0K98wLgSCsmFYZMxuhxeJBTnA");
+
+        var formdata = new FormData();
+        var fileBlob = dataURLtoBlob(fotoDataUrl);
+        formdata.append("file", fileBlob, "photo.jpg");
+
+        var requestOptions = {
+            method: 'POST',
+            headers: myHeaders,
+            body: formdata,
+            redirect: 'follow'
+        };
+
+        fetch("http://localhost:3000/plates/cm-porto/eu/portugal/processPlate", requestOptions)
+            .then(response => response.text())
+            .then(result => {
+                // Mostra a resposta da API
+                var respostaContainer = document.getElementById('respostaContainer');
+                respostaContainer.textContent = 'Resposta da API: ' + result;
+            })
+            .catch(error => {
+                console.error('Erro ao enviar a foto para a API:', error);
+            });
+    }
+
+    // Função para converter o formato de dados da imagem
+    function dataURLtoBlob(dataURL) {
+        var byteString = atob(dataURL.split(',')[1]);
+        var mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mimeString });
+    }
+</script>
+</body>
+</html>
